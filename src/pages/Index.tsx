@@ -11,6 +11,7 @@ const Index = () => {
   const [view, setView] = useState<View>("hero");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [analysisTimestamp, setAnalysisTimestamp] = useState<Date>(new Date());
   const { toast } = useToast();
 
   const handleAnalyze = async (jobDescription: string, resume: string) => {
@@ -56,6 +57,7 @@ const Index = () => {
       };
 
       setResult(mockResult);
+      setAnalysisTimestamp(new Date());
       setView("results");
     } catch {
       toast({
@@ -78,7 +80,7 @@ const Index = () => {
   }
 
   if (view === "results" && result) {
-    return <ResultsDisplay result={result} onReset={handleReset} onBack={() => setView("screening")} />;
+    return <ResultsDisplay result={result} analysisTimestamp={analysisTimestamp} onReset={handleReset} onBack={() => setView("screening")} />;
   }
 
   return (
