@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Upload, FileText, Loader2, ArrowLeft } from "lucide-react";
+import { Sparkles, Upload, FileText, Loader2, ArrowLeft, X, CheckCircle2 } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Use the bundled worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 export interface AnalysisResult {
   matchScore: number;
@@ -19,35 +23,82 @@ interface ScreeningFormProps {
   onBack: () => void;
 }
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 const ScreeningForm = ({ onAnalyze, isLoading, onBack }: ScreeningFormProps) => {
   const [jobDescription, setJobDescription] = useState("");
   const [resume, setResume] = useState("");
   const [inputMode, setInputMode] = useState<"text" | "file">("text");
   const [fileName, setFileName] = useState("");
+  const [isParsing, setIsParsing] = useState(false);
   const [errors, setErrors] = useState<{ jd?: string; resume?: string }>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages: string[] = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item: any) => item.str)
+        .join(" ");
+      pages.push(text);
+    }
+
+    return pages.join("\n\n");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== "text/plain" && !file.name.endsWith(".txt")) {
-      setErrors((prev) => ({ ...prev, resume: "Please upload a .txt file for now" }));
+    // Validate type
+    if (file.type !== "application/pdf") {
+      setErrors((prev) => ({ ...prev, resume: "Only PDF files are accepted" }));
       return;
     }
 
+    // Validate size
+    if (file.size > MAX_FILE_SIZE) {
+      setErrors((prev) => ({ ...prev, resume: "File must be under 5MB" }));
+      return;
+    }
+
+    setIsParsing(true);
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setResume(ev.target?.result as string);
-      setErrors((prev) => ({ ...prev, resume: undefined }));
-    };
-    reader.readAsText(file);
+    setErrors((prev) => ({ ...prev, resume: undefined }));
+
+    try {
+      const text = await extractTextFromPdf(file);
+      if (!text.trim()) {
+        setErrors((prev) => ({ ...prev, resume: "Could not extract text from this PDF. It may be image-based." }));
+        setFileName("");
+        setResume("");
+      } else {
+        setResume(text);
+      }
+    } catch {
+      setErrors((prev) => ({ ...prev, resume: "Failed to parse the PDF. Please try pasting the text instead." }));
+      setFileName("");
+      setResume("");
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const clearFile = () => {
+    setFileName("");
+    setResume("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const validate = () => {
     const newErrors: typeof errors = {};
     if (!jobDescription.trim()) newErrors.jd = "Job description is required";
-    if (!resume.trim()) newErrors.resume = "Resume content is required";
+    if (!resume.trim()) newErrors.resume = inputMode === "file" ? "Please upload a resume PDF" : "Resume content is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -120,7 +171,7 @@ const ScreeningForm = ({ onAnalyze, isLoading, onBack }: ScreeningFormProps) => 
                   }`}
                   onClick={() => setInputMode("text")}
                 >
-                  Text
+                  Paste Text
                 </button>
                 <button
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
@@ -130,7 +181,7 @@ const ScreeningForm = ({ onAnalyze, isLoading, onBack }: ScreeningFormProps) => 
                   }`}
                   onClick={() => setInputMode("file")}
                 >
-                  Upload
+                  Upload PDF
                 </button>
               </div>
             </div>
@@ -146,21 +197,37 @@ const ScreeningForm = ({ onAnalyze, isLoading, onBack }: ScreeningFormProps) => 
                 }}
               />
             ) : (
-              <div className="min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg hover:border-primary/40 transition-colors">
-                {fileName ? (
+              <div className="min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg hover:border-primary/40 transition-colors relative">
+                {isParsing ? (
                   <div className="text-center">
-                    <FileText className="h-10 w-10 text-primary mx-auto mb-3" />
+                    <Loader2 className="h-10 w-10 text-primary mx-auto mb-3 animate-spin" />
+                    <p className="text-sm font-medium text-foreground">Extracting text from PDF...</p>
+                    <p className="text-xs text-muted-foreground mt-1">This may take a moment</p>
+                  </div>
+                ) : fileName ? (
+                  <div className="text-center">
+                    <CheckCircle2 className="h-10 w-10 text-[hsl(152,68%,46%)] mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">{fileName}</p>
-                    <p className="text-xs text-muted-foreground mt-1">File loaded successfully</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {resume ? `${resume.length.toLocaleString()} characters extracted` : "Processing..."}
+                    </p>
+                    <button
+                      onClick={clearFile}
+                      className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                      Remove file
+                    </button>
                   </div>
                 ) : (
-                  <label className="cursor-pointer text-center">
+                  <label className="cursor-pointer text-center p-8 w-full h-full flex flex-col items-center justify-center">
                     <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Click to upload</p>
-                    <p className="text-xs text-muted-foreground mt-1">TXT files supported</p>
+                    <p className="text-sm font-medium text-foreground">Click to upload PDF</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF files only, max 5MB</p>
                     <input
+                      ref={fileInputRef}
                       type="file"
-                      accept=".txt"
+                      accept=".pdf,application/pdf"
                       className="hidden"
                       onChange={handleFileUpload}
                     />
@@ -177,7 +244,7 @@ const ScreeningForm = ({ onAnalyze, isLoading, onBack }: ScreeningFormProps) => 
             size="lg"
             className="gradient-primary text-primary-foreground px-10 py-6 text-base font-semibold shadow-glow hover:opacity-90 transition-opacity"
             onClick={handleSubmit}
-            disabled={isLoading}
+            disabled={isLoading || isParsing}
           >
             {isLoading ? (
               <>
