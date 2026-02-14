@@ -6,15 +6,16 @@ import ResultsDisplay from "@/components/ResultsDisplay";
 import BatchResultsTable from "@/components/BatchResultsTable";
 import type { BatchQueueItem } from "@/components/BatchResultsTable";
 import ComparisonView from "@/components/ComparisonView";
+import HistoryView from "@/components/HistoryView";
 import type { CandidateResult } from "@/lib/types";
+import { useAnalysisHistory, useSavedJobDescriptions } from "@/hooks/use-history";
 import { useToast } from "@/hooks/use-toast";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowLeft, RotateCcw } from "lucide-react";
 
 const API_URL = "https://prabin.up.railway.app/webhook/screen-resumes";
 
-type View = "hero" | "screening" | "single-results" | "batch-results" | "comparison";
+type View = "hero" | "screening" | "single-results" | "batch-results" | "comparison" | "history";
 
 const Index = () => {
   const [view, setView] = useState<View>("hero");
@@ -23,17 +24,18 @@ const Index = () => {
   const [analysisTimestamp, setAnalysisTimestamp] = useState<Date>(new Date());
   const [screeningMode, setScreeningMode] = useState<"single" | "batch">("single");
 
-  // Batch state
   const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
   const [batchResults, setBatchResults] = useState<CandidateResult[]>([]);
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
 
   const { toast } = useToast();
+  const { history, addEntry, removeEntry, clearHistory } = useAnalysisHistory();
+  const { savedJds, saveJd, removeJd } = useSavedJobDescriptions();
 
-  const callApi = async (
-    jobDescription: string,
-    resume: string
-  ): Promise<AnalysisResult> => {
+  // Store current JD title for history
+  const [currentJdTitle, setCurrentJdTitle] = useState("Custom JD");
+
+  const callApi = async (jobDescription: string, resume: string): Promise<AnalysisResult> => {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,10 +70,18 @@ const Index = () => {
 
   const handleAnalyzeSingle = async (jobDescription: string, resume: string) => {
     setIsLoading(true);
+    // Extract a JD title from first line
+    const jdTitle = jobDescription.split("\n")[0].slice(0, 60) || "Custom JD";
+    setCurrentJdTitle(jdTitle);
+
     try {
       const result = await callApi(jobDescription, resume);
       setSingleResult(result);
       setAnalysisTimestamp(new Date());
+
+      // Save to history
+      addEntry("Single Candidate", jdTitle, result);
+
       setView("single-results");
     } catch (err) {
       toast({
@@ -88,6 +98,8 @@ const Index = () => {
     async (jobDescription: string, resumes: ResumeEntry[]) => {
       setIsLoading(true);
       setBatchResults([]);
+
+      const jdTitle = jobDescription.split("\n")[0].slice(0, 60) || "Custom JD";
 
       const queue: BatchQueueItem[] = resumes.map((r) => ({
         id: r.id,
@@ -119,15 +131,14 @@ const Index = () => {
           setBatchQueue((prev) =>
             prev.map((q) => (q.id === entry.id ? { ...q, status: "done" } : q))
           );
+
+          // Save each to history
+          addEntry(entry.fileName, jdTitle, result);
         } catch (err) {
           setBatchQueue((prev) =>
             prev.map((q) =>
               q.id === entry.id
-                ? {
-                    ...q,
-                    status: "error",
-                    error: err instanceof Error ? err.message : "Failed",
-                  }
+                ? { ...q, status: "error", error: err instanceof Error ? err.message : "Failed" }
                 : q
             )
           );
@@ -145,7 +156,7 @@ const Index = () => {
         });
       }
     },
-    [toast]
+    [toast, addEntry]
   );
 
   const handleCompare = (ids: string[]) => {
@@ -178,6 +189,38 @@ const Index = () => {
         onReset={handleResetSingle}
         onBack={() => setView("screening")}
       />
+    );
+  }
+
+  if (view === "history") {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border bg-card">
+          <div className="container mx-auto px-6 py-4 flex items-center gap-3">
+            <button
+              onClick={() => setView("screening")}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="gradient-primary p-1.5 rounded-lg">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold text-foreground tracking-tight">Recruit-AI</span>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-6 py-10 max-w-4xl">
+          <h2 className="text-2xl font-bold text-foreground mb-6">Analysis History</h2>
+          <HistoryView
+            history={history}
+            onRemove={removeEntry}
+            onClear={clearHistory}
+            onBack={() => setView("screening")}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -250,6 +293,10 @@ const Index = () => {
       onBack={() => setView("hero")}
       mode={screeningMode}
       onModeChange={setScreeningMode}
+      savedJds={savedJds}
+      onSaveJd={saveJd}
+      onRemoveJd={removeJd}
+      onOpenHistory={() => setView("history")}
     />
   );
 };

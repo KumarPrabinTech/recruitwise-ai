@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import JdTemplateSelector from "@/components/JdTemplateSelector";
+import type { SavedJobDescription } from "@/lib/types";
 import {
   Sparkles,
   Upload,
@@ -12,6 +13,8 @@ import {
   X,
   CheckCircle2,
   Plus,
+  Save,
+  Clock,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -39,6 +42,10 @@ interface ScreeningFormProps {
   onBack: () => void;
   mode: "single" | "batch";
   onModeChange: (mode: "single" | "batch") => void;
+  savedJds: SavedJobDescription[];
+  onSaveJd: (title: string, content: string) => void;
+  onRemoveJd: (id: string) => void;
+  onOpenHistory: () => void;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -62,6 +69,10 @@ const ScreeningForm = ({
   onBack,
   mode,
   onModeChange,
+  savedJds,
+  onSaveJd,
+  onRemoveJd,
+  onOpenHistory,
 }: ScreeningFormProps) => {
   const [jobDescription, setJobDescription] = useState("");
   const [resume, setResume] = useState("");
@@ -208,28 +219,34 @@ const ScreeningForm = ({
             </div>
           </div>
 
-          {/* Mode toggle */}
-          <div className="flex gap-1 bg-muted rounded-lg p-1">
-            <button
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                mode === "single"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => onModeChange("single")}
-            >
-              Single
-            </button>
-            <button
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                mode === "batch"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => onModeChange("batch")}
-            >
-              Batch
-            </button>
+          {/* Mode toggle + History */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground">
+              <Clock className="h-4 w-4 mr-1.5" />
+              History
+            </Button>
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <button
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  mode === "single"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => onModeChange("single")}
+              >
+                Single
+              </button>
+              <button
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  mode === "batch"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => onModeChange("batch")}
+              >
+                Batch
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -250,18 +267,57 @@ const ScreeningForm = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Job Description */}
           <Card className="p-6 shadow-card">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
                 <h3 className="text-base font-semibold text-foreground">Job Description</h3>
               </div>
-              <JdTemplateSelector
-                onSelect={(content) => {
-                  setJobDescription(content);
-                  setErrors((p) => ({ ...p, jd: undefined }));
-                }}
-              />
+              <div className="flex items-center gap-1.5">
+                {jobDescription.trim().length > 20 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={() => onSaveJd("", jobDescription)}
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                )}
+                <JdTemplateSelector
+                  onSelect={(content) => {
+                    setJobDescription(content);
+                    setErrors((p) => ({ ...p, jd: undefined }));
+                  }}
+                />
+              </div>
             </div>
+
+            {/* Recent saved JDs */}
+            {savedJds.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {savedJds.slice(0, 5).map((jd) => (
+                  <button
+                    key={jd.id}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-muted text-muted-foreground hover:text-foreground transition-colors group"
+                    onClick={() => {
+                      setJobDescription(jd.content);
+                      setErrors((p) => ({ ...p, jd: undefined }));
+                    }}
+                  >
+                    <Clock className="h-2.5 w-2.5" />
+                    <span className="truncate max-w-[100px]">{jd.title}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onRemoveJd(jd.id); }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <Textarea
               placeholder="Paste the full job description here or select a template above..."
               className="min-h-[300px] resize-none text-sm"
