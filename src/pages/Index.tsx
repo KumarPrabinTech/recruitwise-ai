@@ -18,51 +18,47 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Simulated analysis — replace with real API call
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const response = await fetch("https://prabin.up.railway.app/webhook/screen-resumes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobDescription, resume }),
+      });
 
-      const jdLower = jobDescription.toLowerCase();
-      const resumeLower = resume.toLowerCase();
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        throw new Error(
+          response.status === 429
+            ? "Too many requests. Please wait a moment and try again."
+            : response.status >= 500
+            ? "The screening service is temporarily unavailable. Please try again later."
+            : `Analysis failed (${response.status}). ${errorText || "Please try again."}`
+        );
+      }
 
-      // Simple keyword matching for demo
-      const keywords = ["react", "typescript", "javascript", "python", "node", "aws", "docker", "sql", "api", "agile", "leadership", "communication", "design", "testing", "ci/cd"];
-      const jdKeywords = keywords.filter((k) => jdLower.includes(k));
-      const matchedKeywords = jdKeywords.filter((k) => resumeLower.includes(k));
-      const score = jdKeywords.length > 0
-        ? Math.min(98, Math.round((matchedKeywords.length / jdKeywords.length) * 85 + Math.random() * 15))
-        : Math.round(40 + Math.random() * 40);
+      const data = await response.json();
 
-      const mockResult: AnalysisResult = {
-        matchScore: score,
-        summary: `The candidate shows ${score >= 70 ? "strong" : "moderate"} alignment with the role requirements. ${matchedKeywords.length} out of ${jdKeywords.length || "several"} key skills were identified in the resume.`,
-        strengths: [
-          ...(matchedKeywords.length > 0
-            ? [`Demonstrated experience with ${matchedKeywords.slice(0, 3).join(", ")}`]
-            : []),
-          "Resume is well-structured and clearly presented",
-          score >= 60 ? "Relevant industry experience aligns with role" : "Shows willingness to learn",
-          "Professional background suggests cultural fit",
-        ],
-        concerns: score < 70
-          ? [
-              `Missing key skills: ${jdKeywords.filter((k) => !matchedKeywords.includes(k)).slice(0, 3).join(", ") || "some required technologies"}`,
-              "May require additional training in certain areas",
-            ]
-          : [],
-        recommendation: score >= 60 ? "Interview" : "Reject",
-        reasoning:
-          score >= 60
-            ? "Candidate meets the core requirements and warrants further evaluation through an interview."
-            : "Candidate lacks several key qualifications. Consider other applicants who better match the role.",
+      // Validate response shape
+      if (typeof data.score !== "number" || !data.summary) {
+        throw new Error("Received an unexpected response from the server.");
+      }
+
+      const analysisResult: AnalysisResult = {
+        matchScore: Math.max(0, Math.min(100, Math.round(data.score))),
+        summary: data.summary,
+        strengths: Array.isArray(data.strengths) ? data.strengths : [],
+        concerns: Array.isArray(data.concerns) ? data.concerns : [],
+        recommendation: data.recommendation === "Interview" ? "Interview" : "Reject",
+        reasoning: data.reasoning || "",
       };
 
-      setResult(mockResult);
+      setResult(analysisResult);
       setAnalysisTimestamp(new Date());
       setView("results");
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       toast({
         title: "Analysis Failed",
-        description: "Something went wrong. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
