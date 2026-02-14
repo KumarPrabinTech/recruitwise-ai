@@ -7,6 +7,9 @@ import BatchResultsTable from "@/components/BatchResultsTable";
 import type { BatchQueueItem } from "@/components/BatchResultsTable";
 import ComparisonView from "@/components/ComparisonView";
 import HistoryView from "@/components/HistoryView";
+import OnboardingTour from "@/components/OnboardingTour";
+import FeedbackForm from "@/components/FeedbackForm";
+import DarkModeToggle from "@/components/DarkModeToggle";
 import type { CandidateResult } from "@/lib/types";
 import { useAnalysisHistory, useSavedJobDescriptions } from "@/hooks/use-history";
 import { useToast } from "@/hooks/use-toast";
@@ -196,19 +199,23 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background">
         <div className="border-b border-border bg-card">
-          <div className="container mx-auto px-6 py-4 flex items-center gap-3">
-            <button
-              onClick={() => setView("screening")}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="gradient-primary p-1.5 rounded-lg">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
+          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setView("screening")}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Back to screening"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="gradient-primary p-1.5 rounded-lg">
+                  <Sparkles className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-bold text-foreground tracking-tight">Recruit-AI</span>
               </div>
-              <span className="text-lg font-bold text-foreground tracking-tight">Recruit-AI</span>
             </div>
+            <DarkModeToggle />
           </div>
         </div>
         <div className="container mx-auto px-6 py-10 max-w-4xl">
@@ -286,18 +293,22 @@ const Index = () => {
   }
 
   return (
-    <ScreeningForm
-      onAnalyzeSingle={handleAnalyzeSingle}
-      onAnalyzeBatch={handleAnalyzeBatch}
-      isLoading={isLoading}
-      onBack={() => setView("hero")}
-      mode={screeningMode}
-      onModeChange={setScreeningMode}
-      savedJds={savedJds}
-      onSaveJd={saveJd}
-      onRemoveJd={removeJd}
-      onOpenHistory={() => setView("history")}
-    />
+    <>
+      <OnboardingTour run={view === "screening"} />
+      <ScreeningForm
+        onAnalyzeSingle={handleAnalyzeSingle}
+        onAnalyzeBatch={handleAnalyzeBatch}
+        isLoading={isLoading}
+        onBack={() => setView("hero")}
+        mode={screeningMode}
+        onModeChange={setScreeningMode}
+        savedJds={savedJds}
+        onSaveJd={saveJd}
+        onRemoveJd={removeJd}
+        onOpenHistory={() => setView("history")}
+      />
+      <FeedbackForm />
+    </>
   );
 };
 

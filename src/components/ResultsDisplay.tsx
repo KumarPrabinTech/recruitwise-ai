@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import ScoreGauge from "@/components/ScoreGauge";
+import CopyButton from "@/components/CopyButton";
+import DarkModeToggle from "@/components/DarkModeToggle";
 import type { AnalysisResult } from "@/components/ScreeningForm";
 import {
   Collapsible,
@@ -65,11 +67,12 @@ const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack }: ResultsD
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportPdf}>
+            <DarkModeToggle />
+            <Button variant="outline" size="sm" onClick={handleExportPdf} aria-label="Export results as PDF">
               <Download className="h-4 w-4 mr-2" />
               Export PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={onReset}>
+            <Button variant="outline" size="sm" onClick={onReset} aria-label="Analyze another candidate">
               <RotateCcw className="h-4 w-4 mr-2" />
               Analyze Another
             </Button>
@@ -129,9 +132,12 @@ const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack }: ResultsD
           className="p-6 shadow-card mb-6 animate-fade-in"
           style={{ animationDelay: "0.2s" }}
         >
-          <div className="flex items-center gap-2 mb-3">
-            <FileText className="h-5 w-5 text-primary" />
-            <h3 className="text-base font-semibold text-foreground">Summary</h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <h3 className="text-base font-semibold text-foreground">Summary</h3>
+            </div>
+            <CopyButton text={result.summary} label="Copy" />
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">{result.summary}</p>
         </Card>
@@ -158,9 +164,12 @@ const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack }: ResultsD
                   <div className="border-t border-border pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Strengths */}
                     <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <CheckCircle2 className="h-5 w-5 text-[hsl(152,68%,46%)]" />
-                        <h4 className="text-sm font-semibold text-foreground">Key Strengths</h4>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-[hsl(152,68%,46%)]" />
+                          <h4 className="text-sm font-semibold text-foreground">Key Strengths</h4>
+                        </div>
+                        <CopyButton text={result.strengths.join("\n")} label="Copy" />
                       </div>
                       <ul className="space-y-3">
                         {result.strengths.map((s, i) => (
@@ -174,9 +183,12 @@ const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack }: ResultsD
 
                     {/* Concerns */}
                     <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <AlertTriangle className="h-5 w-5 text-[hsl(38,92%,50%)]" />
-                        <h4 className="text-sm font-semibold text-foreground">Areas of Concern</h4>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-[hsl(38,92%,50%)]" />
+                          <h4 className="text-sm font-semibold text-foreground">Areas of Concern</h4>
+                        </div>
+                        <CopyButton text={result.concerns.join("\n") || "None"} label="Copy" />
                       </div>
                       {result.concerns.length > 0 ? (
                         <ul className="space-y-3">
