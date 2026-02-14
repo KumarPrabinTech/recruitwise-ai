@@ -1,64 +1,82 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import HeroSection from "@/components/HeroSection";
 import ScreeningForm from "@/components/ScreeningForm";
+import type { AnalysisResult, ResumeEntry } from "@/components/ScreeningForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
-import type { AnalysisResult } from "@/components/ScreeningForm";
+import BatchResultsTable from "@/components/BatchResultsTable";
+import type { BatchQueueItem } from "@/components/BatchResultsTable";
+import ComparisonView from "@/components/ComparisonView";
+import type { CandidateResult } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Sparkles, ArrowLeft, RotateCcw } from "lucide-react";
 
-type View = "hero" | "screening" | "results";
+const API_URL = "https://prabin.up.railway.app/webhook/screen-resumes";
+
+type View = "hero" | "screening" | "single-results" | "batch-results" | "comparison";
 
 const Index = () => {
   const [view, setView] = useState<View>("hero");
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [singleResult, setSingleResult] = useState<AnalysisResult | null>(null);
   const [analysisTimestamp, setAnalysisTimestamp] = useState<Date>(new Date());
+  const [screeningMode, setScreeningMode] = useState<"single" | "batch">("single");
+
+  // Batch state
+  const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
+  const [batchResults, setBatchResults] = useState<CandidateResult[]>([]);
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+
   const { toast } = useToast();
 
-  const handleAnalyze = async (jobDescription: string, resume: string) => {
+  const callApi = async (
+    jobDescription: string,
+    resume: string
+  ): Promise<AnalysisResult> => {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobDescription, resume }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(
+        response.status === 429
+          ? "Too many requests. Please wait a moment and try again."
+          : response.status >= 500
+          ? "The screening service is temporarily unavailable."
+          : `Analysis failed (${response.status}). ${errorText || "Please try again."}`
+      );
+    }
+
+    const data = await response.json();
+    if (typeof data.score !== "number" || !data.summary) {
+      throw new Error("Received an unexpected response from the server.");
+    }
+
+    return {
+      matchScore: Math.max(0, Math.min(100, Math.round(data.score))),
+      summary: data.summary,
+      strengths: Array.isArray(data.strengths) ? data.strengths : [],
+      concerns: Array.isArray(data.concerns) ? data.concerns : [],
+      recommendation: data.recommendation === "Interview" ? "Interview" : "Reject",
+      reasoning: data.reasoning || "",
+    };
+  };
+
+  const handleAnalyzeSingle = async (jobDescription: string, resume: string) => {
     setIsLoading(true);
-
     try {
-      const response = await fetch("https://prabin.up.railway.app/webhook/screen-resumes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobDescription, resume }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
-        throw new Error(
-          response.status === 429
-            ? "Too many requests. Please wait a moment and try again."
-            : response.status >= 500
-            ? "The screening service is temporarily unavailable. Please try again later."
-            : `Analysis failed (${response.status}). ${errorText || "Please try again."}`
-        );
-      }
-
-      const data = await response.json();
-
-      // Validate response shape
-      if (typeof data.score !== "number" || !data.summary) {
-        throw new Error("Received an unexpected response from the server.");
-      }
-
-      const analysisResult: AnalysisResult = {
-        matchScore: Math.max(0, Math.min(100, Math.round(data.score))),
-        summary: data.summary,
-        strengths: Array.isArray(data.strengths) ? data.strengths : [],
-        concerns: Array.isArray(data.concerns) ? data.concerns : [],
-        recommendation: data.recommendation === "Interview" ? "Interview" : "Reject",
-        reasoning: data.reasoning || "",
-      };
-
-      setResult(analysisResult);
+      const result = await callApi(jobDescription, resume);
+      setSingleResult(result);
       setAnalysisTimestamp(new Date());
-      setView("results");
+      setView("single-results");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       toast({
         title: "Analysis Failed",
-        description: message,
+        description: err instanceof Error ? err.message : "Something went wrong.",
         variant: "destructive",
       });
     } finally {
@@ -66,24 +84,172 @@ const Index = () => {
     }
   };
 
-  const handleReset = () => {
-    setResult(null);
+  const handleAnalyzeBatch = useCallback(
+    async (jobDescription: string, resumes: ResumeEntry[]) => {
+      setIsLoading(true);
+      setBatchResults([]);
+
+      const queue: BatchQueueItem[] = resumes.map((r) => ({
+        id: r.id,
+        fileName: r.fileName,
+        status: "pending",
+      }));
+      setBatchQueue(queue);
+      setView("batch-results");
+
+      const results: CandidateResult[] = [];
+
+      for (let i = 0; i < resumes.length; i++) {
+        const entry = resumes[i];
+
+        setBatchQueue((prev) =>
+          prev.map((q) => (q.id === entry.id ? { ...q, status: "processing" } : q))
+        );
+
+        try {
+          const result = await callApi(jobDescription, entry.text);
+          const candidate: CandidateResult = {
+            id: entry.id,
+            fileName: entry.fileName,
+            result,
+            timestamp: new Date(),
+          };
+          results.push(candidate);
+          setBatchResults((prev) => [...prev, candidate]);
+          setBatchQueue((prev) =>
+            prev.map((q) => (q.id === entry.id ? { ...q, status: "done" } : q))
+          );
+        } catch (err) {
+          setBatchQueue((prev) =>
+            prev.map((q) =>
+              q.id === entry.id
+                ? {
+                    ...q,
+                    status: "error",
+                    error: err instanceof Error ? err.message : "Failed",
+                  }
+                : q
+            )
+          );
+        }
+      }
+
+      setIsLoading(false);
+
+      const failedCount = queue.length - results.length;
+      if (failedCount > 0) {
+        toast({
+          title: "Some analyses failed",
+          description: `${failedCount} of ${queue.length} candidates could not be analyzed.`,
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
+  );
+
+  const handleCompare = (ids: string[]) => {
+    setComparisonIds(ids);
+    setView("comparison");
+  };
+
+  const handleResetSingle = () => {
+    setSingleResult(null);
     setView("screening");
   };
+
+  const handleResetBatch = () => {
+    setBatchQueue([]);
+    setBatchResults([]);
+    setView("screening");
+  };
+
+  // ---- VIEWS ----
 
   if (view === "hero") {
     return <HeroSection onGetStarted={() => setView("screening")} />;
   }
 
-  if (view === "results" && result) {
-    return <ResultsDisplay result={result} analysisTimestamp={analysisTimestamp} onReset={handleReset} onBack={() => setView("screening")} />;
+  if (view === "single-results" && singleResult) {
+    return (
+      <ResultsDisplay
+        result={singleResult}
+        analysisTimestamp={analysisTimestamp}
+        onReset={handleResetSingle}
+        onBack={() => setView("screening")}
+      />
+    );
+  }
+
+  if (view === "comparison") {
+    const compCandidates = batchResults.filter((c) => comparisonIds.includes(c.id));
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border bg-card">
+          <div className="container mx-auto px-6 py-4 flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="gradient-primary p-1.5 rounded-lg">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold text-foreground tracking-tight">Recruit-AI</span>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-6 py-10 max-w-6xl">
+          <ComparisonView
+            candidates={compCandidates}
+            onBack={() => setView("batch-results")}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "batch-results") {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b border-border bg-card">
+          <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setView("screening")}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="gradient-primary p-1.5 rounded-lg">
+                  <Sparkles className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-bold text-foreground tracking-tight">Recruit-AI</span>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleResetBatch}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              New Batch
+            </Button>
+          </div>
+        </div>
+        <div className="container mx-auto px-6 py-10 max-w-6xl">
+          <h2 className="text-2xl font-bold text-foreground mb-6">Batch Results</h2>
+          <BatchResultsTable
+            queue={batchQueue}
+            results={batchResults}
+            onCompare={handleCompare}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
     <ScreeningForm
-      onAnalyze={handleAnalyze}
+      onAnalyzeSingle={handleAnalyzeSingle}
+      onAnalyzeBatch={handleAnalyzeBatch}
       isLoading={isLoading}
       onBack={() => setView("hero")}
+      mode={screeningMode}
+      onModeChange={setScreeningMode}
     />
   );
 };
