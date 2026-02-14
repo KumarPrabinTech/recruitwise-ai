@@ -1,9 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import JdTemplateSelector from "@/components/JdTemplateSelector";
+import DarkModeToggle from "@/components/DarkModeToggle";
 import type { SavedJobDescription } from "@/lib/types";
+import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut";
 import {
   Sparkles,
   Upload,
@@ -15,6 +17,7 @@ import {
   Plus,
   Save,
   Clock,
+  Keyboard,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -190,14 +193,22 @@ const ScreeningForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!validate()) return;
     if (mode === "single") {
       onAnalyzeSingle(jobDescription, resume);
     } else {
       onAnalyzeBatch(jobDescription, batchResumes);
     }
-  };
+  }, [jobDescription, resume, mode, batchResumes, onAnalyzeSingle, onAnalyzeBatch]);
+
+  // Ctrl+Enter shortcut
+  useKeyboardShortcut({
+    key: "Enter",
+    ctrlKey: true,
+    callback: handleSubmit,
+    enabled: !isLoading && !isParsing && !batchParsing,
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,6 +219,7 @@ const ScreeningForm = ({
             <button
               onClick={onBack}
               className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Go back"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -219,14 +231,17 @@ const ScreeningForm = ({
             </div>
           </div>
 
-          {/* Mode toggle + History */}
+          {/* Mode toggle + History + Dark mode */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground">
+            <DarkModeToggle />
+            <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground" data-tour="history-btn" aria-label="View analysis history">
               <Clock className="h-4 w-4 mr-1.5" />
               History
             </Button>
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <div className="flex gap-1 bg-muted rounded-lg p-1" data-tour="mode-toggle" role="tablist" aria-label="Analysis mode">
               <button
+                role="tab"
+                aria-selected={mode === "single"}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   mode === "single"
                     ? "bg-card text-foreground shadow-sm"
@@ -237,6 +252,8 @@ const ScreeningForm = ({
                 Single
               </button>
               <button
+                role="tab"
+                aria-selected={mode === "batch"}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   mode === "batch"
                     ? "bg-card text-foreground shadow-sm"
@@ -266,7 +283,7 @@ const ScreeningForm = ({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Job Description */}
-          <Card className="p-6 shadow-card">
+          <Card className="p-6 shadow-card" data-tour="jd-card">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
@@ -331,7 +348,7 @@ const ScreeningForm = ({
           </Card>
 
           {/* Resume(s) */}
-          <Card className="p-6 shadow-card">
+          <Card className="p-6 shadow-card" data-tour="resume-card">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Upload className="h-5 w-5 text-secondary" />
@@ -474,12 +491,14 @@ const ScreeningForm = ({
           </Card>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <Button
             size="lg"
             className="gradient-primary text-primary-foreground px-10 py-6 text-base font-semibold shadow-glow hover:opacity-90 transition-opacity"
             onClick={handleSubmit}
             disabled={isLoading || isParsing || batchParsing}
+            data-tour="analyze-btn"
+            aria-label="Analyze candidate"
           >
             {isLoading ? (
               <>
@@ -495,6 +514,13 @@ const ScreeningForm = ({
               </>
             )}
           </Button>
+          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+            <Keyboard className="h-3 w-3" />
+            <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">Ctrl</kbd>
+            <span>+</span>
+            <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">Enter</kbd>
+            <span>to analyze</span>
+          </p>
         </div>
       </div>
     </div>
