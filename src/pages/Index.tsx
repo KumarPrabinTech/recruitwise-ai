@@ -26,6 +26,7 @@ const Index = () => {
   const [singleResult, setSingleResult] = useState<AnalysisResult | null>(null);
   const [analysisTimestamp, setAnalysisTimestamp] = useState<Date>(new Date());
   const [screeningMode, setScreeningMode] = useState<"single" | "batch">("single");
+  const [lastCandidateInfo, setLastCandidateInfo] = useState<CandidateInfo>({ name: "", email: "", jobTitle: "", hiringManagerEmail: "" });
 
   const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
   const [batchResults, setBatchResults] = useState<CandidateResult[]>([]);
@@ -82,6 +83,7 @@ const Index = () => {
 
   const handleAnalyzeSingle = async (jobDescription: string, resume: string, candidateInfo: CandidateInfo) => {
     setIsLoading(true);
+    setLastCandidateInfo(candidateInfo);
     const jdTitle = jobDescription.split("\n")[0].slice(0, 60) || "Custom JD";
     setCurrentJdTitle(jdTitle);
 
@@ -213,6 +215,9 @@ const Index = () => {
         analysisTimestamp={analysisTimestamp}
         onReset={handleResetSingle}
         onBack={() => setView("screening")}
+        candidateName={lastCandidateInfo.name}
+        candidateEmail={lastCandidateInfo.email}
+        jobTitle={lastCandidateInfo.jobTitle}
       />
     );
   }

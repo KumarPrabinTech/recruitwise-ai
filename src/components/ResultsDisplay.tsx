@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import ScoreGauge from "@/components/ScoreGauge";
 import CopyButton from "@/components/CopyButton";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import WorkflowStatus from "@/components/WorkflowStatus";
 import type { AnalysisResult } from "@/components/ScreeningForm";
 import {
   Collapsible,
@@ -34,6 +35,9 @@ interface ResultsDisplayProps {
   analysisTimestamp: Date;
   onReset: () => void;
   onBack: () => void;
+  candidateName?: string;
+  candidateEmail?: string;
+  jobTitle?: string;
 }
 
 const breakdownConfig = [
@@ -43,7 +47,7 @@ const breakdownConfig = [
   { key: "soft_skills" as const, label: "Soft Skills", max: 15, color: "hsl(38, 92%, 50%)" },
 ];
 
-const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack }: ResultsDisplayProps) => {
+const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack, candidateName = "", candidateEmail = "", jobTitle = "" }: ResultsDisplayProps) => {
   const isInterview = result.recommendation === "Interview";
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [reasoningOpen, setReasoningOpen] = useState(false);
@@ -281,6 +285,14 @@ const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack }: ResultsD
             </Collapsible>
           </div>
         )}
+
+        {/* Workflow Status Tracking */}
+        <WorkflowStatus
+          recommendation={result.recommendation}
+          candidateName={candidateName}
+          candidateEmail={candidateEmail}
+          jobTitle={jobTitle}
+        />
 
         {/* Bottom CTA */}
         <div className="flex flex-col sm:flex-row justify-center gap-3 mt-10 animate-fade-in" style={{ animationDelay: "0.4s" }}>
