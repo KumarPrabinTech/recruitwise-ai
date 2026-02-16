@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import JdTemplateSelector from "@/components/JdTemplateSelector";
 import DarkModeToggle from "@/components/DarkModeToggle";
@@ -18,6 +19,9 @@ import {
   Save,
   Clock,
   Keyboard,
+  User,
+  Mail,
+  Briefcase,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -38,9 +42,16 @@ export interface ResumeEntry {
   text: string;
 }
 
+export interface CandidateInfo {
+  name: string;
+  email: string;
+  jobTitle: string;
+  hiringManagerEmail: string;
+}
+
 interface ScreeningFormProps {
-  onAnalyzeSingle: (jobDescription: string, resume: string) => void;
-  onAnalyzeBatch: (jobDescription: string, resumes: ResumeEntry[]) => void;
+  onAnalyzeSingle: (jobDescription: string, resume: string, candidateInfo: CandidateInfo) => void;
+  onAnalyzeBatch: (jobDescription: string, resumes: ResumeEntry[], candidateInfo: CandidateInfo) => void;
   isLoading: boolean;
   onBack: () => void;
   mode: "single" | "batch";
@@ -82,7 +93,13 @@ const ScreeningForm = ({
   const [inputMode, setInputMode] = useState<"text" | "file">("text");
   const [fileName, setFileName] = useState("");
   const [isParsing, setIsParsing] = useState(false);
-  const [errors, setErrors] = useState<{ jd?: string; resume?: string }>({});
+  const [errors, setErrors] = useState<{ jd?: string; resume?: string; candidateInfo?: string }>({});
+  const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>({
+    name: "",
+    email: "",
+    jobTitle: "",
+    hiringManagerEmail: "",
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Batch state
@@ -196,11 +213,11 @@ const ScreeningForm = ({
   const handleSubmit = useCallback(() => {
     if (!validate()) return;
     if (mode === "single") {
-      onAnalyzeSingle(jobDescription, resume);
+      onAnalyzeSingle(jobDescription, resume, candidateInfo);
     } else {
-      onAnalyzeBatch(jobDescription, batchResumes);
+      onAnalyzeBatch(jobDescription, batchResumes, candidateInfo);
     }
-  }, [jobDescription, resume, mode, batchResumes, onAnalyzeSingle, onAnalyzeBatch]);
+  }, [jobDescription, resume, mode, batchResumes, candidateInfo, onAnalyzeSingle, onAnalyzeBatch]);
 
   // Ctrl+Enter shortcut
   useKeyboardShortcut({
@@ -490,6 +507,63 @@ const ScreeningForm = ({
             {errors.resume && <p className="text-destructive text-sm mt-2">{errors.resume}</p>}
           </Card>
         </div>
+
+        {/* Candidate Details */}
+        <Card className="p-6 shadow-card mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <User className="h-5 w-5 text-primary" />
+            <h3 className="text-base font-semibold text-foreground">Candidate Details</h3>
+            <span className="text-xs text-muted-foreground">(optional)</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                Candidate Name
+              </label>
+              <Input
+                placeholder="e.g. Jane Doe"
+                value={candidateInfo.name}
+                onChange={(e) => setCandidateInfo((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                Candidate Email
+              </label>
+              <Input
+                type="email"
+                placeholder="e.g. jane@example.com"
+                value={candidateInfo.email}
+                onChange={(e) => setCandidateInfo((p) => ({ ...p, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                Job Title
+              </label>
+              <Input
+                placeholder="e.g. Senior Software Engineer"
+                value={candidateInfo.jobTitle}
+                onChange={(e) => setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                Hiring Manager Email
+              </label>
+              <Input
+                type="email"
+                placeholder="e.g. hr@company.com"
+                value={candidateInfo.hiringManagerEmail}
+                onChange={(e) => setCandidateInfo((p) => ({ ...p, hiringManagerEmail: e.target.value }))}
+              />
+            </div>
+          </div>
+        </Card>
 
         <div className="flex flex-col items-center gap-2">
           <Button
