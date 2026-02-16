@@ -1,73 +1,77 @@
-# Welcome to your Lovable project
+# Recruit-AI — Smart Candidate Screening
 
-## Project info
+AI-powered recruitment screening tool built with React, TypeScript, Tailwind CSS, and shadcn/ui.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **Single & Batch Screening** — Analyze one or multiple candidates against a job description
+- **AI-Powered Analysis** — Match scoring, strength/concern identification, and hire recommendations via n8n workflows
+- **Score Breakdown** — Skills match, experience, achievements, and soft skills scoring
+- **History & Templates** — Save JD templates, track past analyses, export as CSV
+- **PDF Export** — Professional screening reports
+- **Workflow Status Tracking** — Email/scheduling notifications with visual timeline
+- **Dark Mode** — Full light/dark theme support
+- **Keyboard Shortcuts** — Ctrl+Enter to analyze, Escape to reset
 
-There are several ways of editing your application.
+## Getting Started
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Node.js 18+ and npm
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Environment Variables
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Copy the example env file and configure your API endpoints:
+
+```sh
+cp .env.example .env
+```
+
+Available variables:
+
+| Variable | Description | Default |
+|---|---|---|
+| `VITE_N8N_WORKFLOW1_URL` | n8n Workflow 1 (Screening) webhook URL | `https://prabin-free-trial.app.n8n.cloud/webhook/recruit-ai-screening` |
+| `VITE_N8N_WORKFLOW2_URL` | n8n Workflow 2 (Email/Scheduling) webhook URL | `https://prabin-free-trial.app.n8n.cloud/webhook/email-scheduling` |
+| `VITE_DEFAULT_HIRING_MANAGER_EMAIL` | Default hiring manager email | `hr@company.com` |
+
+### Development
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Build
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+npm run build
+```
 
-**Use GitHub Codespaces**
+## Tech Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **Frontend:** React 18, TypeScript, Tailwind CSS, shadcn/ui
+- **State:** React hooks + localStorage persistence
+- **API:** n8n webhooks with timeout + retry logic
+- **PDF Parsing:** pdfjs-dist
+- **Animations:** Tailwind CSS + CSS animations
 
-## What technologies are used for this project?
+## API Integration
 
-This project is built with:
+The app communicates with two n8n workflows:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Workflow 1 (Screening):** Accepts JD + resume, returns match score and analysis
+2. **Workflow 2 (Email/Scheduling):** Sends interview invitations or rejection emails
 
-## How can I deploy this project?
+See `src/lib/api-config.ts` for configuration details.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Deployment
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Open [Lovable](https://lovable.dev) and click **Share → Publish**.
