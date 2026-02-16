@@ -4,7 +4,7 @@ import type { AnalysisResult } from "@/components/ScreeningForm";
 
 const HISTORY_KEY = "recruit-ai-history";
 const SAVED_JD_KEY = "recruit-ai-saved-jds";
-const MAX_HISTORY = 10;
+const MAX_HISTORY = 20;
 const MAX_SAVED_JDS = 10;
 
 function loadJson<T>(key: string, fallback: T): T {

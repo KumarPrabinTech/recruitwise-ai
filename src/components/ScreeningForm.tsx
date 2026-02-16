@@ -3,6 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import JdTemplateSelector from "@/components/JdTemplateSelector";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import type { SavedJobDescription } from "@/lib/types";
@@ -22,6 +29,7 @@ import {
   User,
   Mail,
   Briefcase,
+  HelpCircle,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -243,6 +251,22 @@ const ScreeningForm = ({
     enabled: !isLoading && !isParsing && !batchParsing,
   });
 
+  // Escape to reset form
+  const handleReset = useCallback(() => {
+    setJobDescription("");
+    setResume("");
+    setFileName("");
+    setCandidateInfo({ name: "", email: "", jobTitle: "", hiringManagerEmail: "" });
+    setBatchResumes([]);
+    setErrors({});
+  }, []);
+
+  useKeyboardShortcut({
+    key: "Escape",
+    callback: handleReset,
+    enabled: !isLoading,
+  });
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -266,6 +290,36 @@ const ScreeningForm = ({
 
           {/* Mode toggle + History + Dark mode */}
           <div className="flex items-center gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Keyboard shortcuts">
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Keyboard className="h-5 w-5" />
+                    Keyboard Shortcuts
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 mt-2">
+                  {[
+                    { keys: ["Ctrl", "Enter"], desc: "Submit / Analyze" },
+                    { keys: ["Esc"], desc: "Reset form" },
+                  ].map(({ keys, desc }) => (
+                    <div key={desc} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{desc}</span>
+                      <div className="flex items-center gap-1">
+                        {keys.map((k) => (
+                          <kbd key={k} className="px-2 py-1 bg-muted rounded text-xs font-mono font-medium text-foreground">{k}</kbd>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
             <DarkModeToggle />
             <Button variant="ghost" size="sm" onClick={onOpenHistory} className="text-muted-foreground" data-tour="history-btn" aria-label="View analysis history">
               <Clock className="h-4 w-4 mr-1.5" />
