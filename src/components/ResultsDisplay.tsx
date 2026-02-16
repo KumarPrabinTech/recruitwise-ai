@@ -26,6 +26,9 @@ import {
   FileText,
   Copy,
   Hash,
+  User,
+  Mail,
+  Briefcase,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -123,6 +126,60 @@ const ResultsDisplay = ({ result, analysisTimestamp, onReset, onBack, candidateN
         {/* Title + Timestamp + Application ID */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-2 animate-fade-in">
           <h2 className="text-2xl font-bold text-foreground">Screening Results</h2>
+        </div>
+
+        {/* Candidate Info Card */}
+        <Card className="p-6 shadow-card mb-8 animate-fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <User className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Candidate Name</p>
+                {(result.candidateName && result.candidateName !== "Unknown" && result.candidateName.trim() !== "") ? (
+                  <p className="text-sm font-semibold text-foreground">{result.candidateName}</p>
+                ) : (candidateName && candidateName !== "Unknown" && candidateName.trim() !== "") ? (
+                  <p className="text-sm font-semibold text-foreground">{candidateName}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground/60 italic">Missing</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Mail className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Candidate Email</p>
+                {(result.candidateEmail && result.candidateEmail.trim() !== "") ? (
+                  <p className="text-sm font-semibold text-foreground">{result.candidateEmail}</p>
+                ) : (candidateEmail && candidateEmail.trim() !== "") ? (
+                  <p className="text-sm font-semibold text-foreground">{candidateEmail}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground/60 italic">Missing</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Briefcase className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Job Title</p>
+                {(result.jobTitle && result.jobTitle.trim() !== "") ? (
+                  <p className="text-sm font-semibold text-foreground">{result.jobTitle}</p>
+                ) : (jobTitle && jobTitle.trim() !== "") ? (
+                  <p className="text-sm font-semibold text-foreground">{jobTitle}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground/60 italic">Missing</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end mb-6 gap-2 animate-fade-in">
           <div className="flex items-center gap-3">
             {result.applicationId && (
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
