@@ -7,10 +7,6 @@ export const API_CONFIG = {
     import.meta.env.VITE_N8N_WORKFLOW1_URL ||
     "https://prabin-free-trial.app.n8n.cloud/webhook/recruit-ai-screening",
 
-  WORKFLOW_2_URL:
-    import.meta.env.VITE_N8N_WORKFLOW2_URL ||
-    "https://prabin-free-trial.app.n8n.cloud/webhook/email-scheduling",
-
   DEFAULT_HIRING_MANAGER_EMAIL:
     import.meta.env.VITE_DEFAULT_HIRING_MANAGER_EMAIL || "hr@company.com",
 
