@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowLeft, RotateCcw } from "lucide-react";
 
-const API_URL = "https://prabin.up.railway.app/webhook/screen-resumes";
+const API_URL = "https://prabin-free-trial.app.n8n.cloud/webhook/recruit-ai-screening";
 
 type View = "hero" | "screening" | "single-results" | "batch-results" | "comparison" | "history";
 
@@ -45,10 +45,10 @@ const Index = () => {
       body: JSON.stringify({
         jobDescription,
         resume,
-        candidateName: candidateInfo?.name || undefined,
-        candidateEmail: candidateInfo?.email || undefined,
-        jobTitle: candidateInfo?.jobTitle || undefined,
-        hiringManagerEmail: candidateInfo?.hiringManagerEmail || undefined,
+        candidateName: candidateInfo?.name || "Unknown",
+        candidateEmail: candidateInfo?.email || "",
+        jobTitle: candidateInfo?.jobTitle || "",
+        hiringManagerEmail: candidateInfo?.hiringManagerEmail || "hr@company.com",
       }),
     });
 
@@ -73,8 +73,10 @@ const Index = () => {
       summary: data.summary,
       strengths: Array.isArray(data.strengths) ? data.strengths : [],
       concerns: Array.isArray(data.concerns) ? data.concerns : [],
-      recommendation: data.recommendation === "Interview" ? "Interview" : "Reject",
+      recommendation: data.recommendation === "INTERVIEW" || data.recommendation === "Interview" ? "Interview" : "Reject",
       reasoning: data.reasoning || "",
+      applicationId: data.applicationId || undefined,
+      breakdown: data.breakdown || undefined,
     };
   };
 

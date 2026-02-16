@@ -34,6 +34,13 @@ export interface AnalysisResult {
   concerns: string[];
   recommendation: "Interview" | "Reject";
   reasoning: string;
+  applicationId?: string;
+  breakdown?: {
+    skills_match: number;
+    experience_match: number;
+    achievements: number;
+    soft_skills: number;
+  };
 }
 
 export interface ResumeEntry {
@@ -206,6 +213,15 @@ const ScreeningForm = ({
       if (batchResumes.length === 0) newErrors.resume = "Please upload at least one resume";
     }
 
+    if (!candidateInfo.name.trim()) newErrors.candidateInfo = "Candidate name is required";
+    else if (!candidateInfo.email.trim()) newErrors.candidateInfo = "Candidate email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.email)) newErrors.candidateInfo = "Invalid email format";
+    else if (!candidateInfo.jobTitle.trim()) newErrors.candidateInfo = "Job title is required";
+
+    if (candidateInfo.hiringManagerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.hiringManagerEmail)) {
+      newErrors.candidateInfo = "Invalid hiring manager email format";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -353,15 +369,20 @@ const ScreeningForm = ({
             )}
 
             <Textarea
-              placeholder="Paste the full job description here or select a template above..."
-              className="min-h-[300px] resize-none text-sm"
+              placeholder="Paste the complete job description here..."
+              className="min-h-[250px] resize-none text-sm"
+              rows={8}
               value={jobDescription}
               onChange={(e) => {
                 setJobDescription(e.target.value);
                 if (errors.jd) setErrors((p) => ({ ...p, jd: undefined }));
               }}
+              disabled={isLoading}
             />
-            {errors.jd && <p className="text-destructive text-sm mt-2">{errors.jd}</p>}
+            <div className="flex items-center justify-between mt-2">
+              {errors.jd ? <p className="text-destructive text-sm">{errors.jd}</p> : <span />}
+              <span className="text-xs text-muted-foreground">{jobDescription.length.toLocaleString()} chars</span>
+            </div>
           </Card>
 
           {/* Resume(s) */}
@@ -402,15 +423,22 @@ const ScreeningForm = ({
             {mode === "single" ? (
               // Single mode
               inputMode === "text" ? (
-                <Textarea
-                  placeholder="Paste the candidate's resume here..."
-                  className="min-h-[300px] resize-none text-sm"
-                  value={resume}
-                  onChange={(e) => {
-                    setResume(e.target.value);
-                    if (errors.resume) setErrors((p) => ({ ...p, resume: undefined }));
-                  }}
-                />
+                <>
+                  <Textarea
+                    placeholder="Paste the candidate's resume here..."
+                    className="min-h-[250px] resize-none text-sm"
+                    rows={12}
+                    value={resume}
+                    onChange={(e) => {
+                      setResume(e.target.value);
+                      if (errors.resume) setErrors((p) => ({ ...p, resume: undefined }));
+                    }}
+                    disabled={isLoading}
+                  />
+                  <div className="flex justify-end mt-1">
+                    <span className="text-xs text-muted-foreground">{resume.length.toLocaleString()} chars</span>
+                  </div>
+                </>
               ) : (
                 <div className="min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg hover:border-primary/40 transition-colors">
                   {isParsing ? (
@@ -513,7 +541,6 @@ const ScreeningForm = ({
           <div className="flex items-center gap-2 mb-4">
             <User className="h-5 w-5 text-primary" />
             <h3 className="text-base font-semibold text-foreground">Candidate Details</h3>
-            <span className="text-xs text-muted-foreground">(optional)</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -524,7 +551,9 @@ const ScreeningForm = ({
               <Input
                 placeholder="e.g. Jane Doe"
                 value={candidateInfo.name}
-                onChange={(e) => setCandidateInfo((p) => ({ ...p, name: e.target.value }))}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, name: e.target.value })); if (errors.candidateInfo) setErrors((p) => ({ ...p, candidateInfo: undefined })); }}
+                disabled={isLoading}
+                required
               />
             </div>
             <div className="space-y-1.5">
@@ -536,7 +565,9 @@ const ScreeningForm = ({
                 type="email"
                 placeholder="e.g. jane@example.com"
                 value={candidateInfo.email}
-                onChange={(e) => setCandidateInfo((p) => ({ ...p, email: e.target.value }))}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, email: e.target.value })); if (errors.candidateInfo) setErrors((p) => ({ ...p, candidateInfo: undefined })); }}
+                disabled={isLoading}
+                required
               />
             </div>
             <div className="space-y-1.5">
@@ -547,7 +578,9 @@ const ScreeningForm = ({
               <Input
                 placeholder="e.g. Senior Software Engineer"
                 value={candidateInfo.jobTitle}
-                onChange={(e) => setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value }))}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value })); if (errors.candidateInfo) setErrors((p) => ({ ...p, candidateInfo: undefined })); }}
+                disabled={isLoading}
+                required
               />
             </div>
             <div className="space-y-1.5">
@@ -560,6 +593,7 @@ const ScreeningForm = ({
                 placeholder="e.g. hr@company.com"
                 value={candidateInfo.hiringManagerEmail}
                 onChange={(e) => setCandidateInfo((p) => ({ ...p, hiringManagerEmail: e.target.value }))}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -577,7 +611,10 @@ const ScreeningForm = ({
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {mode === "single" ? "Analyzing Candidate..." : "Analyzing Batch..."}
+                <div className="flex flex-col items-start">
+                  <span>{mode === "single" ? "Analyzing Candidate..." : "Analyzing Batch..."}</span>
+                  <span className="text-xs font-normal opacity-80">This usually takes 10-15 seconds</span>
+                </div>
               </>
             ) : (
               <>
