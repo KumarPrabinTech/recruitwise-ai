@@ -88,6 +88,9 @@ const Index = () => {
         data.recommendation === "INTERVIEW" || data.recommendation === "Interview" ? "Interview" : "Reject",
       reasoning: data.reasoning || "",
       applicationId: data.applicationId || undefined,
+      candidateName: data.candidateName || undefined,
+      candidateEmail: data.candidateEmail || undefined,
+      jobTitle: data.jobTitle || undefined,
       breakdown: data.breakdown || undefined,
     };
   };

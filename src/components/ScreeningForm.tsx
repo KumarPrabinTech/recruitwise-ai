@@ -49,6 +49,9 @@ export interface AnalysisResult {
   recommendation: "Interview" | "Reject";
   reasoning: string;
   applicationId?: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  jobTitle?: string;
   breakdown?: {
     skills_match: number;
     experience_match: number;
