@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import HeroSection from "@/components/HeroSection";
 import ScreeningForm from "@/components/ScreeningForm";
-import type { AnalysisResult, ResumeEntry } from "@/components/ScreeningForm";
+import type { AnalysisResult, ResumeEntry, CandidateInfo } from "@/components/ScreeningForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import BatchResultsTable from "@/components/BatchResultsTable";
 import type { BatchQueueItem } from "@/components/BatchResultsTable";
@@ -38,11 +38,18 @@ const Index = () => {
   // Store current JD title for history
   const [currentJdTitle, setCurrentJdTitle] = useState("Custom JD");
 
-  const callApi = async (jobDescription: string, resume: string): Promise<AnalysisResult> => {
+  const callApi = async (jobDescription: string, resume: string, candidateInfo?: CandidateInfo): Promise<AnalysisResult> => {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobDescription, resume }),
+      body: JSON.stringify({
+        jobDescription,
+        resume,
+        candidateName: candidateInfo?.name || undefined,
+        candidateEmail: candidateInfo?.email || undefined,
+        jobTitle: candidateInfo?.jobTitle || undefined,
+        hiringManagerEmail: candidateInfo?.hiringManagerEmail || undefined,
+      }),
     });
 
     if (!response.ok) {
@@ -71,19 +78,18 @@ const Index = () => {
     };
   };
 
-  const handleAnalyzeSingle = async (jobDescription: string, resume: string) => {
+  const handleAnalyzeSingle = async (jobDescription: string, resume: string, candidateInfo: CandidateInfo) => {
     setIsLoading(true);
-    // Extract a JD title from first line
     const jdTitle = jobDescription.split("\n")[0].slice(0, 60) || "Custom JD";
     setCurrentJdTitle(jdTitle);
 
     try {
-      const result = await callApi(jobDescription, resume);
+      const result = await callApi(jobDescription, resume, candidateInfo);
       setSingleResult(result);
       setAnalysisTimestamp(new Date());
 
       // Save to history
-      addEntry("Single Candidate", jdTitle, result);
+      addEntry(candidateInfo.name || "Single Candidate", jdTitle, result);
 
       setView("single-results");
     } catch (err) {
@@ -98,7 +104,7 @@ const Index = () => {
   };
 
   const handleAnalyzeBatch = useCallback(
-    async (jobDescription: string, resumes: ResumeEntry[]) => {
+    async (jobDescription: string, resumes: ResumeEntry[], candidateInfo: CandidateInfo) => {
       setIsLoading(true);
       setBatchResults([]);
 
@@ -122,7 +128,7 @@ const Index = () => {
         );
 
         try {
-          const result = await callApi(jobDescription, entry.text);
+          const result = await callApi(jobDescription, entry.text, candidateInfo);
           const candidate: CandidateResult = {
             id: entry.id,
             fileName: entry.fileName,
