@@ -59,8 +59,8 @@ const Index = () => {
         candidateEmail: candidateInfo?.email || "",
         jobTitle: candidateInfo?.jobTitle || "",
         hiringManagerEmail: candidateInfo?.hiringManagerEmail || API_CONFIG.DEFAULT_HIRING_MANAGER_EMAIL,
-        signal: AbortSignal.timeout(120000),
       }),
+      signal: AbortSignal.timeout(120000),
     });
 
     if (!response.ok) {
