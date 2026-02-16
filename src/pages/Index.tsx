@@ -93,6 +93,20 @@ const Index = () => {
       // Save to history
       addEntry(candidateInfo.name || "Single Candidate", jdTitle, result);
 
+      // Show toast based on recommendation
+      if (result.recommendation === "Interview") {
+        toast({
+          title: "✅ Recommend Interview",
+          description: `${candidateInfo.name || "Candidate"} scored ${result.matchScore}/100. Proceed to interview.`,
+        });
+      } else {
+        toast({
+          title: "ℹ️ Not Recommended",
+          description: `${candidateInfo.name || "Candidate"} scored ${result.matchScore}/100. Does not meet requirements.`,
+          variant: "destructive",
+        });
+      }
+
       setView("single-results");
     } catch (err) {
       toast({
