@@ -3,12 +3,12 @@ import { Progress } from "@/components/ui/progress";
 import { Loader2 } from "lucide-react";
 
 const STAGES = [
-  { label: "Parsing job requirements...", maxSeconds: 5 },
-  { label: "Analyzing resume...", maxSeconds: 10 },
-  { label: "Calculating match score...", maxSeconds: 15 },
+  { label: "Parsing job requirements...", maxSeconds: 15 },
+  { label: "Analyzing resume...", maxSeconds: 40 },
+  { label: "Calculating match score...", maxSeconds: 60 },
 ];
 
-const TOTAL_SECONDS = 15;
+const TOTAL_SECONDS = 60;
 
 interface AnalysisProgressProps {
   isLoading: boolean;

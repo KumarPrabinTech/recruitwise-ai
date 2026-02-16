@@ -15,7 +15,7 @@ export const API_CONFIG = {
     import.meta.env.VITE_DEFAULT_HIRING_MANAGER_EMAIL || "hr@company.com",
 
   /** Request timeout in milliseconds */
-  TIMEOUT: 30_000,
+  TIMEOUT: 60_000,
 
   /** Number of automatic retries on failure */
   MAX_RETRIES: 1,
