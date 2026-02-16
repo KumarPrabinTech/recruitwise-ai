@@ -60,7 +60,7 @@ const Index = () => {
         jobTitle: candidateInfo?.jobTitle || "",
         hiringManagerEmail: candidateInfo?.hiringManagerEmail || API_CONFIG.DEFAULT_HIRING_MANAGER_EMAIL,
       }),
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(60000),
     });
 
     if (!response.ok) {
