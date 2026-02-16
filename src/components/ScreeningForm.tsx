@@ -108,7 +108,7 @@ const ScreeningForm = ({
   const [inputMode, setInputMode] = useState<"text" | "file">("text");
   const [fileName, setFileName] = useState("");
   const [isParsing, setIsParsing] = useState(false);
-  const [errors, setErrors] = useState<{ jd?: string; resume?: string; candidateInfo?: string }>({});
+  const [errors, setErrors] = useState<{ jd?: string; resume?: string; name?: string; email?: string; jobTitle?: string; hiringManager?: string }>({});
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>({
     name: "",
     email: "",
@@ -212,26 +212,45 @@ const ScreeningForm = ({
   const validate = () => {
     const newErrors: typeof errors = {};
     if (!jobDescription.trim()) newErrors.jd = "Job description is required";
+    else if (jobDescription.trim().length < 50) newErrors.jd = "Job description must be at least 50 characters";
 
     if (mode === "single") {
       if (!resume.trim())
         newErrors.resume =
           inputMode === "file" ? "Please upload a resume PDF" : "Resume content is required";
+      else if (resume.trim().length < 100) newErrors.resume = "Resume must be at least 100 characters";
     } else {
       if (batchResumes.length === 0) newErrors.resume = "Please upload at least one resume";
     }
 
-    if (!candidateInfo.name.trim()) newErrors.candidateInfo = "Candidate name is required";
-    else if (!candidateInfo.email.trim()) newErrors.candidateInfo = "Candidate email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.email)) newErrors.candidateInfo = "Invalid email format";
-    else if (!candidateInfo.jobTitle.trim()) newErrors.candidateInfo = "Job title is required";
+    if (!candidateInfo.name.trim()) newErrors.name = "Candidate name is required";
+    if (!candidateInfo.email.trim()) newErrors.email = "Candidate email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.email)) newErrors.email = "Please enter a valid email address";
+    if (!candidateInfo.jobTitle.trim()) newErrors.jobTitle = "Job title is required";
 
     if (candidateInfo.hiringManagerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.hiringManagerEmail)) {
-      newErrors.candidateInfo = "Invalid hiring manager email format";
+      newErrors.hiringManager = "Please enter a valid email address";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleBlur = (field: keyof typeof errors, value: string, minLen?: number) => {
+    if (!value.trim()) return; // don't validate empty on blur, only on submit
+    const newErrors = { ...errors };
+    if (field === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      newErrors.email = "Please enter a valid email address";
+    } else if (field === "hiringManager" && value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      newErrors.hiringManager = "Please enter a valid email address";
+    } else if (field === "jd" && minLen && value.trim().length < minLen) {
+      newErrors.jd = `Job description must be at least ${minLen} characters`;
+    } else if (field === "resume" && minLen && value.trim().length < minLen) {
+      newErrors.resume = `Resume must be at least ${minLen} characters`;
+    } else {
+      delete newErrors[field];
+    }
+    setErrors(newErrors);
   };
 
   const handleSubmit = useCallback(() => {
@@ -424,13 +443,16 @@ const ScreeningForm = ({
 
             <Textarea
               placeholder="Paste the complete job description here..."
-              className="min-h-[250px] resize-none text-sm"
+              className={`min-h-[250px] resize-none text-sm ${errors.jd ? "border-destructive focus-visible:ring-destructive" : ""}`}
               rows={8}
               value={jobDescription}
+              aria-label="Job description text"
+              aria-invalid={!!errors.jd}
               onChange={(e) => {
                 setJobDescription(e.target.value);
                 if (errors.jd) setErrors((p) => ({ ...p, jd: undefined }));
               }}
+              onBlur={() => handleBlur("jd", jobDescription, 50)}
               disabled={isLoading}
             />
             <div className="flex items-center justify-between mt-2">
@@ -480,13 +502,16 @@ const ScreeningForm = ({
                 <>
                   <Textarea
                     placeholder="Paste the candidate's resume here..."
-                    className="min-h-[250px] resize-none text-sm"
+                    className={`min-h-[250px] resize-none text-sm ${errors.resume ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     rows={12}
                     value={resume}
+                    aria-label="Candidate resume text"
+                    aria-invalid={!!errors.resume}
                     onChange={(e) => {
                       setResume(e.target.value);
                       if (errors.resume) setErrors((p) => ({ ...p, resume: undefined }));
                     }}
+                    onBlur={() => handleBlur("resume", resume, 100)}
                     disabled={isLoading}
                   />
                   <div className="flex justify-end mt-1">
@@ -598,57 +623,81 @@ const ScreeningForm = ({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <label htmlFor="candidate-name" className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
-                Candidate Name
+                Candidate Name <span className="text-destructive">*</span>
               </label>
               <Input
+                id="candidate-name"
+                aria-label="Candidate full name"
+                aria-invalid={!!errors.name}
                 placeholder="e.g. Jane Doe"
                 value={candidateInfo.name}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, name: e.target.value })); if (errors.candidateInfo) setErrors((p) => ({ ...p, candidateInfo: undefined })); }}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, name: e.target.value })); if (errors.name) setErrors((p) => ({ ...p, name: undefined })); }}
+                onBlur={() => handleBlur("name", candidateInfo.name)}
                 disabled={isLoading}
                 required
+                className={`min-h-[44px] ${errors.name ? "border-destructive focus-visible:ring-destructive" : ""}`}
               />
+              {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <label htmlFor="candidate-email" className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                Candidate Email
+                Candidate Email <span className="text-destructive">*</span>
               </label>
               <Input
+                id="candidate-email"
                 type="email"
+                aria-label="Candidate email address"
+                aria-invalid={!!errors.email}
                 placeholder="e.g. jane@example.com"
                 value={candidateInfo.email}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, email: e.target.value })); if (errors.candidateInfo) setErrors((p) => ({ ...p, candidateInfo: undefined })); }}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, email: e.target.value })); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
+                onBlur={() => handleBlur("email", candidateInfo.email)}
                 disabled={isLoading}
                 required
+                className={`min-h-[44px] ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
               />
+              {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <label htmlFor="job-title" className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
-                Job Title
+                Job Title <span className="text-destructive">*</span>
               </label>
               <Input
+                id="job-title"
+                aria-label="Job title or position"
+                aria-invalid={!!errors.jobTitle}
                 placeholder="e.g. Senior Software Engineer"
                 value={candidateInfo.jobTitle}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value })); if (errors.candidateInfo) setErrors((p) => ({ ...p, candidateInfo: undefined })); }}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value })); if (errors.jobTitle) setErrors((p) => ({ ...p, jobTitle: undefined })); }}
+                onBlur={() => handleBlur("jobTitle", candidateInfo.jobTitle)}
                 disabled={isLoading}
                 required
+                className={`min-h-[44px] ${errors.jobTitle ? "border-destructive focus-visible:ring-destructive" : ""}`}
               />
+              {errors.jobTitle && <p className="text-destructive text-xs">{errors.jobTitle}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <label htmlFor="hiring-manager-email" className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 Hiring Manager Email
               </label>
               <Input
+                id="hiring-manager-email"
                 type="email"
+                aria-label="Hiring manager email address"
+                aria-invalid={!!errors.hiringManager}
                 placeholder="e.g. hr@company.com"
                 value={candidateInfo.hiringManagerEmail}
-                onChange={(e) => setCandidateInfo((p) => ({ ...p, hiringManagerEmail: e.target.value }))}
+                onChange={(e) => { setCandidateInfo((p) => ({ ...p, hiringManagerEmail: e.target.value })); if (errors.hiringManager) setErrors((p) => ({ ...p, hiringManager: undefined })); }}
+                onBlur={() => handleBlur("hiringManager", candidateInfo.hiringManagerEmail)}
                 disabled={isLoading}
+                className={`min-h-[44px] ${errors.hiringManager ? "border-destructive focus-visible:ring-destructive" : ""}`}
               />
+              {errors.hiringManager && <p className="text-destructive text-xs">{errors.hiringManager}</p>}
             </div>
           </div>
         </Card>

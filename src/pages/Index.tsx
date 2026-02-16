@@ -10,13 +10,14 @@ import HistoryView from "@/components/HistoryView";
 import OnboardingTour from "@/components/OnboardingTour";
 import FeedbackForm from "@/components/FeedbackForm";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import AppFooter from "@/components/AppFooter";
+import AnalysisProgress from "@/components/AnalysisProgress";
 import type { CandidateResult } from "@/lib/types";
 import { useAnalysisHistory, useSavedJobDescriptions } from "@/hooks/use-history";
 import { useToast } from "@/hooks/use-toast";
+import { API_CONFIG, fetchWithRetry } from "@/lib/api-config";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowLeft, RotateCcw } from "lucide-react";
-
-const API_URL = "https://prabin-free-trial.app.n8n.cloud/webhook/recruit-ai-screening";
 
 type View = "hero" | "screening" | "single-results" | "batch-results" | "comparison" | "history";
 
@@ -36,11 +37,10 @@ const Index = () => {
   const { history, addEntry, removeEntry, clearHistory } = useAnalysisHistory();
   const { savedJds, saveJd, removeJd } = useSavedJobDescriptions();
 
-  // Store current JD title for history
   const [currentJdTitle, setCurrentJdTitle] = useState("Custom JD");
 
   const callApi = async (jobDescription: string, resume: string, candidateInfo?: CandidateInfo): Promise<AnalysisResult> => {
-    const response = await fetch(API_URL, {
+    const response = await fetchWithRetry(API_CONFIG.WORKFLOW_1_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -49,7 +49,7 @@ const Index = () => {
         candidateName: candidateInfo?.name || "Unknown",
         candidateEmail: candidateInfo?.email || "",
         jobTitle: candidateInfo?.jobTitle || "",
-        hiringManagerEmail: candidateInfo?.hiringManagerEmail || "hr@company.com",
+        hiringManagerEmail: candidateInfo?.hiringManagerEmail || API_CONFIG.DEFAULT_HIRING_MANAGER_EMAIL,
       }),
     });
 
@@ -92,10 +92,8 @@ const Index = () => {
       setSingleResult(result);
       setAnalysisTimestamp(new Date());
 
-      // Save to history
       addEntry(candidateInfo.name || "Single Candidate", jdTitle, result);
 
-      // Show toast based on recommendation
       if (result.recommendation === "Interview") {
         toast({
           title: "✅ Recommend Interview",
@@ -159,7 +157,6 @@ const Index = () => {
             prev.map((q) => (q.id === entry.id ? { ...q, status: "done" } : q))
           );
 
-          // Save each to history
           addEntry(entry.fileName, jdTitle, result);
         } catch (err) {
           setBatchQueue((prev) =>
@@ -202,7 +199,7 @@ const Index = () => {
     setView("screening");
   };
 
-  // ---- VIEWS ----
+  // ── VIEWS ──
 
   if (view === "hero") {
     return <HeroSection onGetStarted={() => setView("screening")} />;
@@ -210,27 +207,32 @@ const Index = () => {
 
   if (view === "single-results" && singleResult) {
     return (
-      <ResultsDisplay
-        result={singleResult}
-        analysisTimestamp={analysisTimestamp}
-        onReset={handleResetSingle}
-        onBack={() => setView("screening")}
-        candidateName={lastCandidateInfo.name}
-        candidateEmail={lastCandidateInfo.email}
-        jobTitle={lastCandidateInfo.jobTitle}
-      />
+      <div className="min-h-screen flex flex-col bg-background">
+        <div className="flex-1">
+          <ResultsDisplay
+            result={singleResult}
+            analysisTimestamp={analysisTimestamp}
+            onReset={handleResetSingle}
+            onBack={() => setView("screening")}
+            candidateName={lastCandidateInfo.name}
+            candidateEmail={lastCandidateInfo.email}
+            jobTitle={lastCandidateInfo.jobTitle}
+          />
+        </div>
+        <AppFooter />
+      </div>
     );
   }
 
   if (view === "history") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen flex flex-col bg-background">
         <div className="border-b border-border bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setView("screening")}
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Back to screening"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -245,7 +247,7 @@ const Index = () => {
             <DarkModeToggle />
           </div>
         </div>
-        <div className="container mx-auto px-6 py-10 max-w-4xl">
+        <div className="flex-1 container mx-auto px-6 py-10 max-w-4xl">
           <h2 className="text-2xl font-bold text-foreground mb-6">Analysis History</h2>
           <HistoryView
             history={history}
@@ -254,6 +256,7 @@ const Index = () => {
             onBack={() => setView("screening")}
           />
         </div>
+        <AppFooter />
       </div>
     );
   }
@@ -261,7 +264,7 @@ const Index = () => {
   if (view === "comparison") {
     const compCandidates = batchResults.filter((c) => comparisonIds.includes(c.id));
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen flex flex-col bg-background">
         <div className="border-b border-border bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -272,25 +275,27 @@ const Index = () => {
             </div>
           </div>
         </div>
-        <div className="container mx-auto px-6 py-10 max-w-6xl">
+        <div className="flex-1 container mx-auto px-6 py-10 max-w-6xl">
           <ComparisonView
             candidates={compCandidates}
             onBack={() => setView("batch-results")}
           />
         </div>
+        <AppFooter />
       </div>
     );
   }
 
   if (view === "batch-results") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen flex flex-col bg-background">
         <div className="border-b border-border bg-card">
           <div className="container mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setView("screening")}
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Back to screening"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -307,7 +312,7 @@ const Index = () => {
             </Button>
           </div>
         </div>
-        <div className="container mx-auto px-6 py-10 max-w-6xl">
+        <div className="flex-1 container mx-auto px-6 py-10 max-w-6xl">
           <h2 className="text-2xl font-bold text-foreground mb-6">Batch Results</h2>
           <BatchResultsTable
             queue={batchQueue}
@@ -315,25 +320,32 @@ const Index = () => {
             onCompare={handleCompare}
           />
         </div>
+        <AppFooter />
       </div>
     );
   }
 
   return (
     <>
+      <AnalysisProgress isLoading={isLoading} />
       <OnboardingTour run={view === "screening"} />
-      <ScreeningForm
-        onAnalyzeSingle={handleAnalyzeSingle}
-        onAnalyzeBatch={handleAnalyzeBatch}
-        isLoading={isLoading}
-        onBack={() => setView("hero")}
-        mode={screeningMode}
-        onModeChange={setScreeningMode}
-        savedJds={savedJds}
-        onSaveJd={saveJd}
-        onRemoveJd={removeJd}
-        onOpenHistory={() => setView("history")}
-      />
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1">
+          <ScreeningForm
+            onAnalyzeSingle={handleAnalyzeSingle}
+            onAnalyzeBatch={handleAnalyzeBatch}
+            isLoading={isLoading}
+            onBack={() => setView("hero")}
+            mode={screeningMode}
+            onModeChange={setScreeningMode}
+            savedJds={savedJds}
+            onSaveJd={saveJd}
+            onRemoveJd={removeJd}
+            onOpenHistory={() => setView("history")}
+          />
+        </div>
+        <AppFooter />
+      </div>
       <FeedbackForm />
     </>
   );
