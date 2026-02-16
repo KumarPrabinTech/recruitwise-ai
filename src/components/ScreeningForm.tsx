@@ -10,6 +10,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import JdTemplateSelector from "@/components/JdTemplateSelector";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import type { SavedJobDescription } from "@/lib/types";
@@ -30,6 +35,7 @@ import {
   Mail,
   Briefcase,
   HelpCircle,
+  ChevronDown,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
@@ -109,6 +115,7 @@ const ScreeningForm = ({
   const [fileName, setFileName] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [errors, setErrors] = useState<{ jd?: string; resume?: string; name?: string; email?: string; jobTitle?: string; hiringManager?: string }>({});
+  const [showCandidateDetails, setShowCandidateDetails] = useState(false);
   const [candidateInfo, setCandidateInfo] = useState<CandidateInfo>({
     name: "",
     email: "",
@@ -223,13 +230,15 @@ const ScreeningForm = ({
       if (batchResumes.length === 0) newErrors.resume = "Please upload at least one resume";
     }
 
-    if (!candidateInfo.name.trim()) newErrors.name = "Candidate name is required";
-    if (!candidateInfo.email.trim()) newErrors.email = "Candidate email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.email)) newErrors.email = "Please enter a valid email address";
-    if (!candidateInfo.jobTitle.trim()) newErrors.jobTitle = "Job title is required";
+    if (showCandidateDetails) {
+      if (!candidateInfo.name.trim()) newErrors.name = "Candidate name is required";
+      if (!candidateInfo.email.trim()) newErrors.email = "Candidate email is required";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.email)) newErrors.email = "Please enter a valid email address";
+      if (!candidateInfo.jobTitle.trim()) newErrors.jobTitle = "Job title is required";
 
-    if (candidateInfo.hiringManagerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.hiringManagerEmail)) {
-      newErrors.hiringManager = "Please enter a valid email address";
+      if (candidateInfo.hiringManagerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateInfo.hiringManagerEmail)) {
+        newErrors.hiringManager = "Please enter a valid email address";
+      }
     }
 
     setErrors(newErrors);
@@ -615,92 +624,104 @@ const ScreeningForm = ({
           </Card>
         </div>
 
-        {/* Candidate Details */}
-        <Card className="p-6 shadow-card mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <User className="h-5 w-5 text-primary" />
-            <h3 className="text-base font-semibold text-foreground">Candidate Details</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label htmlFor="candidate-name" className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                Candidate Name <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="candidate-name"
-                aria-label="Candidate full name"
-                aria-invalid={!!errors.name}
-                placeholder="e.g. Jane Doe"
-                value={candidateInfo.name}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, name: e.target.value })); if (errors.name) setErrors((p) => ({ ...p, name: undefined })); }}
-                onBlur={() => handleBlur("name", candidateInfo.name)}
-                disabled={isLoading}
-                required
-                className={`min-h-[44px] ${errors.name ? "border-destructive focus-visible:ring-destructive" : ""}`}
-              />
-              {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="candidate-email" className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                Candidate Email <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="candidate-email"
-                type="email"
-                aria-label="Candidate email address"
-                aria-invalid={!!errors.email}
-                placeholder="e.g. jane@example.com"
-                value={candidateInfo.email}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, email: e.target.value })); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
-                onBlur={() => handleBlur("email", candidateInfo.email)}
-                disabled={isLoading}
-                required
-                className={`min-h-[44px] ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
-              />
-              {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="job-title" className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
-                Job Title <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="job-title"
-                aria-label="Job title or position"
-                aria-invalid={!!errors.jobTitle}
-                placeholder="e.g. Senior Software Engineer"
-                value={candidateInfo.jobTitle}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value })); if (errors.jobTitle) setErrors((p) => ({ ...p, jobTitle: undefined })); }}
-                onBlur={() => handleBlur("jobTitle", candidateInfo.jobTitle)}
-                disabled={isLoading}
-                required
-                className={`min-h-[44px] ${errors.jobTitle ? "border-destructive focus-visible:ring-destructive" : ""}`}
-              />
-              {errors.jobTitle && <p className="text-destructive text-xs">{errors.jobTitle}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="hiring-manager-email" className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                Hiring Manager Email
-              </label>
-              <Input
-                id="hiring-manager-email"
-                type="email"
-                aria-label="Hiring manager email address"
-                aria-invalid={!!errors.hiringManager}
-                placeholder="e.g. hr@company.com"
-                value={candidateInfo.hiringManagerEmail}
-                onChange={(e) => { setCandidateInfo((p) => ({ ...p, hiringManagerEmail: e.target.value })); if (errors.hiringManager) setErrors((p) => ({ ...p, hiringManager: undefined })); }}
-                onBlur={() => handleBlur("hiringManager", candidateInfo.hiringManagerEmail)}
-                disabled={isLoading}
-                className={`min-h-[44px] ${errors.hiringManager ? "border-destructive focus-visible:ring-destructive" : ""}`}
-              />
-              {errors.hiringManager && <p className="text-destructive text-xs">{errors.hiringManager}</p>}
-            </div>
-          </div>
-        </Card>
+        {/* Candidate Details (Optional) */}
+        <Collapsible open={showCandidateDetails} onOpenChange={setShowCandidateDetails} className="mb-8">
+          <Card className="shadow-card overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center justify-between p-6 hover:bg-muted/50 transition-colors text-left">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  <h3 className="text-base font-semibold text-foreground">Candidate Details</h3>
+                  <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                </div>
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${showCandidateDetails ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-6 pb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label htmlFor="candidate-name" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      Candidate Name <span className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      id="candidate-name"
+                      aria-label="Candidate full name"
+                      aria-invalid={!!errors.name}
+                      placeholder="e.g. Jane Doe"
+                      value={candidateInfo.name}
+                      onChange={(e) => { setCandidateInfo((p) => ({ ...p, name: e.target.value })); if (errors.name) setErrors((p) => ({ ...p, name: undefined })); }}
+                      onBlur={() => handleBlur("name", candidateInfo.name)}
+                      disabled={isLoading}
+                      required
+                      className={`min-h-[44px] ${errors.name ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    />
+                    {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="candidate-email" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      Candidate Email <span className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      id="candidate-email"
+                      type="email"
+                      aria-label="Candidate email address"
+                      aria-invalid={!!errors.email}
+                      placeholder="e.g. jane@example.com"
+                      value={candidateInfo.email}
+                      onChange={(e) => { setCandidateInfo((p) => ({ ...p, email: e.target.value })); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
+                      onBlur={() => handleBlur("email", candidateInfo.email)}
+                      disabled={isLoading}
+                      required
+                      className={`min-h-[44px] ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    />
+                    {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="job-title" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                      Job Title <span className="text-destructive">*</span>
+                    </label>
+                    <Input
+                      id="job-title"
+                      aria-label="Job title or position"
+                      aria-invalid={!!errors.jobTitle}
+                      placeholder="e.g. Senior Software Engineer"
+                      value={candidateInfo.jobTitle}
+                      onChange={(e) => { setCandidateInfo((p) => ({ ...p, jobTitle: e.target.value })); if (errors.jobTitle) setErrors((p) => ({ ...p, jobTitle: undefined })); }}
+                      onBlur={() => handleBlur("jobTitle", candidateInfo.jobTitle)}
+                      disabled={isLoading}
+                      required
+                      className={`min-h-[44px] ${errors.jobTitle ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    />
+                    {errors.jobTitle && <p className="text-destructive text-xs">{errors.jobTitle}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="hiring-manager-email" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      Hiring Manager Email
+                    </label>
+                    <Input
+                      id="hiring-manager-email"
+                      type="email"
+                      aria-label="Hiring manager email address"
+                      aria-invalid={!!errors.hiringManager}
+                      placeholder="e.g. hr@company.com"
+                      value={candidateInfo.hiringManagerEmail}
+                      onChange={(e) => { setCandidateInfo((p) => ({ ...p, hiringManagerEmail: e.target.value })); if (errors.hiringManager) setErrors((p) => ({ ...p, hiringManager: undefined })); }}
+                      onBlur={() => handleBlur("hiringManager", candidateInfo.hiringManagerEmail)}
+                      disabled={isLoading}
+                      className={`min-h-[44px] ${errors.hiringManager ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    />
+                    {errors.hiringManager && <p className="text-destructive text-xs">{errors.hiringManager}</p>}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         <div className="flex flex-col items-center gap-2">
           <Button
