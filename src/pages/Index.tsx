@@ -53,7 +53,7 @@ const Index = () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        jobDescription,
+        jobDescription: jobDescription.trim(),
         resume,
         candidateName: candidateInfo?.name || "Unknown",
         candidateEmail: candidateInfo?.email || "",
