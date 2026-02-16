@@ -27,7 +27,12 @@ const Index = () => {
   const [singleResult, setSingleResult] = useState<AnalysisResult | null>(null);
   const [analysisTimestamp, setAnalysisTimestamp] = useState<Date>(new Date());
   const [screeningMode, setScreeningMode] = useState<"single" | "batch">("single");
-  const [lastCandidateInfo, setLastCandidateInfo] = useState<CandidateInfo>({ name: "", email: "", jobTitle: "", hiringManagerEmail: "" });
+  const [lastCandidateInfo, setLastCandidateInfo] = useState<CandidateInfo>({
+    name: "",
+    email: "",
+    jobTitle: "",
+    hiringManagerEmail: "",
+  });
 
   const [batchQueue, setBatchQueue] = useState<BatchQueueItem[]>([]);
   const [batchResults, setBatchResults] = useState<CandidateResult[]>([]);
@@ -39,7 +44,11 @@ const Index = () => {
 
   const [currentJdTitle, setCurrentJdTitle] = useState("Custom JD");
 
-  const callApi = async (jobDescription: string, resume: string, candidateInfo?: CandidateInfo): Promise<AnalysisResult> => {
+  const callApi = async (
+    jobDescription: string,
+    resume: string,
+    candidateInfo?: CandidateInfo,
+  ): Promise<AnalysisResult> => {
     const response = await fetchWithRetry(API_CONFIG.WORKFLOW_1_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -50,6 +59,7 @@ const Index = () => {
         candidateEmail: candidateInfo?.email || "",
         jobTitle: candidateInfo?.jobTitle || "",
         hiringManagerEmail: candidateInfo?.hiringManagerEmail || API_CONFIG.DEFAULT_HIRING_MANAGER_EMAIL,
+        signal: AbortSignal.timeout(120000),
       }),
     });
 
@@ -59,8 +69,8 @@ const Index = () => {
         response.status === 429
           ? "Too many requests. Please wait a moment and try again."
           : response.status >= 500
-          ? "The screening service is temporarily unavailable."
-          : `Analysis failed (${response.status}). ${errorText || "Please try again."}`
+            ? "The screening service is temporarily unavailable."
+            : `Analysis failed (${response.status}). ${errorText || "Please try again."}`,
       );
     }
 
@@ -74,7 +84,8 @@ const Index = () => {
       summary: data.summary,
       strengths: Array.isArray(data.strengths) ? data.strengths : [],
       concerns: Array.isArray(data.concerns) ? data.concerns : [],
-      recommendation: data.recommendation === "INTERVIEW" || data.recommendation === "Interview" ? "Interview" : "Reject",
+      recommendation:
+        data.recommendation === "INTERVIEW" || data.recommendation === "Interview" ? "Interview" : "Reject",
       reasoning: data.reasoning || "",
       applicationId: data.applicationId || undefined,
       breakdown: data.breakdown || undefined,
@@ -139,9 +150,7 @@ const Index = () => {
       for (let i = 0; i < resumes.length; i++) {
         const entry = resumes[i];
 
-        setBatchQueue((prev) =>
-          prev.map((q) => (q.id === entry.id ? { ...q, status: "processing" } : q))
-        );
+        setBatchQueue((prev) => prev.map((q) => (q.id === entry.id ? { ...q, status: "processing" } : q)));
 
         try {
           const result = await callApi(jobDescription, entry.text, candidateInfo);
@@ -153,18 +162,14 @@ const Index = () => {
           };
           results.push(candidate);
           setBatchResults((prev) => [...prev, candidate]);
-          setBatchQueue((prev) =>
-            prev.map((q) => (q.id === entry.id ? { ...q, status: "done" } : q))
-          );
+          setBatchQueue((prev) => prev.map((q) => (q.id === entry.id ? { ...q, status: "done" } : q)));
 
           addEntry(entry.fileName, jdTitle, result);
         } catch (err) {
           setBatchQueue((prev) =>
             prev.map((q) =>
-              q.id === entry.id
-                ? { ...q, status: "error", error: err instanceof Error ? err.message : "Failed" }
-                : q
-            )
+              q.id === entry.id ? { ...q, status: "error", error: err instanceof Error ? err.message : "Failed" } : q,
+            ),
           );
         }
       }
@@ -180,7 +185,7 @@ const Index = () => {
         });
       }
     },
-    [toast, addEntry]
+    [toast, addEntry],
   );
 
   const handleCompare = (ids: string[]) => {
@@ -276,10 +281,7 @@ const Index = () => {
           </div>
         </div>
         <div className="flex-1 container mx-auto px-6 py-10 max-w-6xl">
-          <ComparisonView
-            candidates={compCandidates}
-            onBack={() => setView("batch-results")}
-          />
+          <ComparisonView candidates={compCandidates} onBack={() => setView("batch-results")} />
         </div>
         <AppFooter />
       </div>
@@ -314,11 +316,7 @@ const Index = () => {
         </div>
         <div className="flex-1 container mx-auto px-6 py-10 max-w-6xl">
           <h2 className="text-2xl font-bold text-foreground mb-6">Batch Results</h2>
-          <BatchResultsTable
-            queue={batchQueue}
-            results={batchResults}
-            onCompare={handleCompare}
-          />
+          <BatchResultsTable queue={batchQueue} results={batchResults} onCompare={handleCompare} />
         </div>
         <AppFooter />
       </div>
